@@ -1,0 +1,162 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+ 
+Setup Environment 
+```{r}
+install.packages("randomForest")
+install.packages("repr")
+install.packages("caret")
+install.packages("Metrics")
+install.packages("AUC")
+install.packages("cowplot")
+suppressMessages(library(tidyverse))
+suppressMessages(library(repr))
+suppressMessages(library(randomForest))
+suppressMessages(library(caret))
+suppressMessages(library(cowplot))
+suppressMessages(library(Metrics))
+suppressMessages(library(AUC))
+
+set.seed(123)
+options(repr.plot.width=7, repr.plot.height=3)
+
+```
+Insert Data set
+```{r}
+library(haven)
+ffqtot <- read_csv("C:/Users/copelaa/Downloads/ffqtot.csv")
+View(ffqtot)
+```
+Sub-setting the data set to only the variables of interest
+```{r}
+AnalyticDataset = 
+    ffqtot %>% select(
+        currsm, bmi25,
+        fkcal, atotfat, asat, aoleic, alinolc, achol, acarb, aprot, afiber, adca, adiron, adphos, adk, adna, advaiu, advare, adthiam, adribo, adniac, advc, atca, atiron, atvaiu, atthiri, atvc, asuptoc)
+```
+
+T-test between variables and BMI25 variable
+```{r}
+
+for (i in c("fkcal", "atotfat", "asat", "aoleic", "alinolc", "achol", "acarb", "aprot", "afiber", "adca", "adiron", "adphos", "adk", "adna", "advaiu", "advare", "adthiam", "adribo", "adniac", "advc", "atca", "atiron", "atvaiu", "atthiri", "atvc", "asuptoc", "currsm") ) {
+    print(i)
+}
+```
+
+```{r}
+for (i in c("fkcal", "atotfat", "asat", "aoleic", "alinolc", "achol", "acarb", "aprot", "afiber", "adca", "adiron", "adphos", "adk", "adna", "advaiu", "advare", "adthiam", "adribo", "adniac", "advc", "atca", "atiron", "atvaiu", "atthiri", "atvc", "asuptoc", "currsm") ) {
+    print(paste0(i, " ~ bmi25"))
+}
+```
+Extract Pvalues from TTest
+```{r}
+ExtractedPValues = list()
+for (i in c("fkcal", "atotfat", "asat", "aoleic", "alinolc", "achol", "acarb", "aprot", "afiber", "adca", "adiron", "adphos", "adk", "adna", "advaiu", "advare", "adthiam", "adribo", "adniac", "advc", "atca", "atiron", "atvaiu", "atthiri", "atvc", "asuptoc", "currsm") ) {
+    ExtractedPValues[[i]] = t.test(formula = as.formula(paste0(i, " ~ bmi25")), data = AnalyticDataset)$p.value
+}
+ExtractedPValues = unlist(ExtractedPValues)
+ExtractedPValues
+
+```
+Put Pvalues in Dataframe
+```{r}
+OutputTable = data.frame(
+    X = names(ExtractedPValues), 
+    Y = "bmi25", 
+    PValue = ExtractedPValues
+)
+OutputTable<- OutputTable[order(ExtractedPValues),]
+OutputTable
+
+OutputStatSig<- subset.data.frame(OutputTable, PValue <= 0.05)
+OutputStatSig
+```
+Looking at the Output table and the p values we can see that 
+fkcal, aprot, asat, atotfat, aoleic, aoleic, atthiri are some of the values that have the lowest pvalues wiht a total of 12 variables that are significantly significant for predicting BMI25
+
+Let's control the familywise error rate with the Bonferroni correction. 
+- find the critical value (alpha) for an individual test by dividing the familywise error rate (0.05) by the number of tests. 
+```{r}
+ OutputTable$BonfP = 
+        p.adjust(OutputTable$PValue, method = "bonferroni")
+
+OutputStatSig<- subset.data.frame(OutputTable, BonfP <= (0.05/27))
+
+
+```
+
+Now after correcting we have 2 statistically significant variables 
+Let's look at fkcal more...
+```{r}
+print(paste0("Sample mean:", round(mean(ffqtot$fkcal, na.rm=TRUE))))
+print(paste0("Sample median:", median(ffqtot$fkcal, na.rm=TRUE)))
+print(paste0("Sample variance:", var(ffqtot$fkcal,na.rm=TRUE)))
+print(paste0("Sample Standard Deviation:", round(sd(ffqtot$fkcal,na.rm=TRUE))))
+```
+The average calorie intake for the sample is 2419 kcal
+
+Visualize data
+```{r}
+fkcal<- data.frame(na.omit(ffqtot$fkcal))
+colnames(fkcal) <- "Calories"
+
+ggplot(fkcal, aes(x=Calories))+
+      geom_histogram(bins=20, fill="light green", alpha=20, na.rm = TRUE)+
+      geom_vline(aes(xintercept=mean(ffqtot$fkcal, na.rm = TRUE)),
+              color = "red", size=0.5)+
+      geom_vline(aes(xintercept= median(ffqtot$fkcal, na.rm = TRUE)),
+              color= "red", linetype="dashed", size=0.5)
+```
+```{r}
+ggplot(fkcal, aes(x="", y= Calories))+
+  geom_boxplot(fill="light green", alpha=20) +
+  stat_summary(fun.y=mean, colour="darkred", geom="point",size=2)
+```
+Relationship between BMI (continuous) and fkcal
+```{r}
+ggplot(ffqtot, aes(x=BMIBS, y=fkcal)) + 
+    geom_point() +
+    geom_smooth(method=lm, se=FALSE) +
+    labs(x = "BMI",
+         y = "Calories",
+         title = "Relation between two variables")
+```
+Covariance and correlation between Calories and BMI (continuous variable not categorical)
+```{r}
+BMI.Cal<- na.omit(data.frame(ffqtot$BMIBS,ffqtot$fkcal))
+BMI.Cal<- rename(BMI.Cal, "BMI" = "ffqtot.BMIBS")
+BMI.Cal<- rename(BMI.Cal, "Calories" = "ffqtot.fkcal")
+BMI_v<- as.vector(BMI.Cal$BMI)
+Cal_v<- as.vector(BMI.Cal$Calories)
+print(paste0("Covariance between BMI and Calorie Intake: ", round(cov(BMI_v, Cal_v),2)))
+print(paste0("Correlation between BMI and Calorie Intake : ", round(cor(BMI_v,Cal_v),2)))
+```
+We can assume there is a relationship between BMI and Calorie intake Now why don't we look more at BMI as a categorical variable including aprot( ) heart disease and cholesterol 
+
+
+Regression
+```{r}
+linearModel <- lm(BMIBS ~ fkcal + aprot, data=ffqtot)  # build linear regression model on full data
+print(linearModel)
+
+summary(linearModel)
+```
+Store results
+```{r}
+modelSummary <- summary(linearModel)  # capture model summary as an object
+modelCoeffs <- modelSummary$coefficients  # model coefficients
+beta.estimate <- modelCoeffs["afiber", "achol", "Estimate","Estimate"]  # get beta estimate for variables
+std.error <- modelCoeffs["afiber","achol", "Std. Error"]  # get std.error for variables
+t_value <- beta.estimate/std.error  # calc t statistic
+p_value <- 2*pt(-abs(t_value), df=nrow(ffqtot)-ncol(ffqtot))  # calc p Value
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
