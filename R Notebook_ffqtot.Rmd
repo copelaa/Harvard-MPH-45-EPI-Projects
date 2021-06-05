@@ -147,10 +147,19 @@ Store results
 ```{r}
 modelSummary <- summary(linearModel)  # capture model summary as an object
 modelCoeffs <- modelSummary$coefficients  # model coefficients
-beta.estimate <- modelCoeffs["afiber", "achol", "Estimate","Estimate"]  # get beta estimate for variables
-std.error <- modelCoeffs["afiber","achol", "Std. Error"]  # get std.error for variables
-t_value <- beta.estimate/std.error  # calc t statistic
-p_value <- 2*pt(-abs(t_value), df=nrow(ffqtot)-ncol(ffqtot))  # calc p Value
+beta.estimate_fkcal <- modelCoeffs["fkcal", "Estimate"] # get beta estimate for variables
+std.error_fkcal <- modelCoeffs["fkcal","Std. Error"]# get std.error for Calories
+t_value_fkcal <- beta.estimate_fkcal/std.error_fkcal  # calc t statistic
+p_value_fkcal <- 2*pt(-abs(t_value_fkcal), df=nrow(ffqtot)-ncol(ffqtot))  # calc p Value
+
+#Summary Statistics for aprot
+beta.estimate_aprot <- modelCoeffs["aprot", "Estimate"] # get beta estimate for variables
+std.error_aprot <- modelCoeffs["aprot","Std. Error"]# get std.error for Calories
+t_value_aprot <- beta.estimate_aprot/std.error_aprot  # calc t statistic
+p_value_aprot <- 2*pt(-abs(t_value_aprot), df=nrow(ffqtot)-ncol(ffqtot))
+ 
+```
+```{r}
 
 ```
 
