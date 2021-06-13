@@ -36,7 +36,7 @@ Text files hosted on github and can be manually downloaded and opened from local
 ```{r}
 ##Text file of homicides in all states from 1999-2008
 HOMICIDE_1999 = "https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202019-2008.txt"
-
+https://github.com/copelaa/myrepo/tree/master/Time_Series
 HOMICIDE_1999 = read.delim(HOMICIDE_1999, header = TRUE)
 
 ##Text file of homicides in all states from 2009-2019
