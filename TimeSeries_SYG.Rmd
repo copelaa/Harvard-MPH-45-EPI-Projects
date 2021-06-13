@@ -17,17 +17,13 @@ Install packages and open libraries as needed
 # install.packages("readxl")
 # install.packages("reshape2")
 library(readxl)
-library(deSolve)
 library(data.table)
-library(data.table)
-library(ODEsensitivity)# If you want to use the s
 library(ggplot2)
 library(plotly)
-library(lattice)#Making heat maps
-library(latticeExtra) #make Heat maps
 library(ggplot2)
 library (RCurl)
 library (reshape2)
+library(dplyr)
 ```
 
 Insert Data. Most can be used as a guide on what to use for different scenarios. Importing text files (https://github.com/copelaa/myrepo/tree/master/Time_Series/Data.
@@ -35,14 +31,137 @@ Insert Data. Most can be used as a guide on what to use for different scenarios.
 Text files hosted on github and can be manually downloaded and opened from local machine, or pulled directly from Github. 
 ```{r}
 ##Text file of homicides in all states from 1999-2008
-HOMICIDE_1999 = "https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202019-2008.txt"
+HOMICIDE_1999 = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%201999-2008.txt"
 
-HOMICIDE_1999 = read.delim("https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202019-2008.txt", header = TRUE)
+HOMICIDE_1999 = read.delim(HOMICIDE_1999, header = TRUE)
 
 ##Text file of homicides in all states from 2009-2019
-HOMICIDE_2009 = "https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202009-2019.txt"
+HOMICIDE_2009 = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202009-2019.txt"
 
 HOMICIDE_2009 = read.delim(HOMICIDE_2009, header = TRUE)
 
+#Merge dataframes so years are 1999->2019
+total_HOMICIDE <- rbind(HOMICIDE_1999, HOMICIDE_2009)
 ```
 
+Add Stand Your Ground Starting dates for States:
+```{r}
+total_HOMICIDE$SYG_Start <- NA
+
+#Change Date format to show as dates in Dataframe
+total_HOMICIDE$SYG_Start<-as.Date(total_HOMICIDE$SYG_Start,origin = "1970-01-01", format = "%m/%d/%y")
+
+#Alabama
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Alabama"] <- as.Date("06/01/2006",format = "%m/%d/%y")
+
+#Alaska
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Alaska"] <- as.Date("09/13/2006",format = "%m/%d/%y")
+
+#Arizona
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Arizona"] <- as.Date("04/24/2006",format = "%m/%d/%y")
+
+#Arkansas
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Arkansas"] <- as.Date("03/03/2021",format = "%m/%d/%y")
+
+#Colorado
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Colorado"] <- as.Date("01/01/2019",format = "%m/%d/%y")
+
+#Florida
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Florida"] <- as.Date("10/01/2005",format = "%m/%d/%y")
+
+#Georgia
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Georgia"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Idaho
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Idaho"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Illinois
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Illinois"] <- as.Date("07/28/2004",format = "%m/%d/%y")
+
+#Indiana 
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Indiana"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Iowa
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Iowa"] <- as.Date("04/18/2017",format = "%m/%d/%y")
+
+#Kansas
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Kansas"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Kentucky
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Kentucky"] <- as.Date("07/12/2006",format = "%m/%d/%y")
+
+#Louisiana
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Louisiana"] <- as.Date("08/15/2006",format = "%m/%d/%y")
+
+#Michigan
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Michigan"] <- as.Date("10/01/2006",format = "%m/%d/%y")
+
+#Mississippi
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Mississippi"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Missouri
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Missouri"] <- as.Date("08/28/2007",format = "%m/%d/%y")
+
+#Montana
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Montana"] <- as.Date("04/27/2009",format = "%m/%d/%y")
+
+#Nevada
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Nevada"] <- as.Date("10/01/2011",format = "%m/%d/%y")
+
+#New Hampshire 
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "New Hampshire"] <- as.Date("11/13/2011",format = "%m/%d/%y")
+
+#North Carolina
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "North Carolina"] <- as.Date("12/01/2011",format = "%m/%d/%y")
+
+#North Dakota
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "North Dakota"] <- as.Date("08/01/2007",format = "%m/%d/%y")
+
+#Ohio
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Ohio"] <- as.Date("09/09/2008",format = "%m/%d/%y")
+
+#Oklahoma
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Oklahoma"] <- as.Date("11/01/2006",format = "%m/%d/%y")
+
+#Pennsylvania
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Pennsylvania"] <- as.Date("06/01/2011",format = "%m/%d/%y")
+
+#South Carolina
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "South Carolina"] <- as.Date("06/09/2006",format = "%m/%d/%y")
+
+#South Dakota
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "South Dakota"] <- as.Date("07/01/2006",format = "%m/%d/%y")
+
+#Tennessee
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Tennessee"] <- as.Date("05/22/2007",format = "%m/%d/%y")
+
+#Texas
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Texas"] <- as.Date("09/01/2007",format = "%m/%d/%y")
+
+#Utah
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Utah"] <- as.Date("03/02/1994",format = "%m/%d/%y")
+
+#West Virginia
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "West Virginia" ]<- as.Date("02/28/2008",format = "%m/%d/%y")
+ 
+#Wyoming                        
+total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Wyoming"] <- as.Date("07/01/2008",format = "%m/%d/%y")     
+
+#Check States with No SYG Laws
+NO_SYG<- data.frame(total_HOMICIDE$State[is.na(total_HOMICIDE$SYG_Start)])
+
+colnames(NO_SYG)[1] <- "State"
+
+NO_SYG<- NO_SYG[!duplicated(NO_SYG[ ,c("State")]),]
+  
+
+#Check States with SYG Laws
+SYG<- data.frame(total_HOMICIDE[ ,c(4,23)])
+SYG<- na.omit(SYG)
+SYG<- as.data.frame(SYG[ ,1])
+colnames(SYG)[1] <- "State"
+SYG<- SYG[!duplicated(SYG[ ,c("State")]),]       
+States<- total_HOMICIDE[!duplicated(total_HOMICIDE[ ,c("State")]),4]
+```
+
+Data Exploration: 
