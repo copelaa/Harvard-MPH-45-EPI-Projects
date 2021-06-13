@@ -1,0 +1,48 @@
+---
+title: "Stand Your Ground Law and it's effect on Homicide rates in the US - Interrupted timeseries"
+output: html_notebook
+---
+Stand Your Ground Law and it's effect on Homicide rates in the US - Interrupted timeseries 
+
+1.  Bring in MERS data sets dowloaded from: http://wonder.cdc.gov/
+    Centers for Disease Control and Prevention, National Center for Health Statistics. Underlying Cause of Death
+    1999-2019 on CDC WONDER Online Database, released in 2020. Data are from the Multiple Cause of Death Files,        1999-2019, as compiled from data provided by the 57 vital statistics jurisdictions through the Vital Statistics     Cooperative Program. Accessed at http://wonder.cdc.gov/ucd-icd10.html on Jun 12, 2021 9:26:53 PM
+    
+Install packages and open libraries as needed
+```{r Install packages and libraries needed}
+# install.packages("tidyverse")
+# install.packages("RCurl") # Pull data from Github Raw version 
+# install.packages("sensitivity")
+# install.packages("ggplot2")
+# install.packages("readxl")
+# install.packages("reshape2")
+library(readxl)
+library(deSolve)
+library(data.table)
+library(data.table)
+library(ODEsensitivity)# If you want to use the s
+library(ggplot2)
+library(plotly)
+library(lattice)#Making heat maps
+library(latticeExtra) #make Heat maps
+library(ggplot2)
+library (RCurl)
+library (reshape2)
+```
+
+Insert Data. Most can be used as a guide on what to use for different scenarios. Importing text files (https://github.com/copelaa/myrepo/tree/master/Time_Series/Data.
+
+Text files hosted on github and can be manually downloaded and opened from local machine, or pulled directly from Github. 
+```{r}
+##Text file of homicides in all states from 1999-2008
+HOMICIDE_1999 = "https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202019-2008.txt"
+
+HOMICIDE_1999 = read.delim(HOMICIDE_1999, header = TRUE)
+
+##Text file of homicides in all states from 2009-2019
+HOMICIDE_2009 = "https://github.com/copelaa/myrepo/blob/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202009-2019.txt"
+
+HOMICIDE_2009 = read.delim(HOMICIDE_2009, header = TRUE)
+
+```
+
