@@ -24,6 +24,8 @@ library(ggplot2)
 library (RCurl)
 library (reshape2)
 library(dplyr)
+library(plotly)
+library(rjson)
 ```
 
 Insert Data. Most can be used as a guide on what to use for different scenarios. Importing text files (https://github.com/copelaa/myrepo/tree/master/Time_Series/Data.
@@ -37,6 +39,11 @@ HOMICIDE_1999 = read.delim(HOMICIDE_1999, header = TRUE)
 
 ##Text file of homicides in all states from 2009-2019
 HOMICIDE_2009 = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202009-2019.txt"
+
+##Country file to plot over country image
+
+data <- fromJSON(file="https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
+data$features[[1]]
 
 HOMICIDE_2009 = read.delim(HOMICIDE_2009, header = TRUE)
 
@@ -165,3 +172,45 @@ States<- total_HOMICIDE[!duplicated(total_HOMICIDE[ ,c("State")]),4]
 ```
 
 Data Exploration: 
+
+Plot Homicide level over USA Image
+```{r}
+test <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv")
+test$hover <- with(test, paste(state, '<br>', "Beef", beef, "Dairy", dairy, "<br>",
+                           "Fruits", total.fruits, "Veggies", total.veggies,
+                           "<br>", "Wheat", wheat, "Corn", corn))
+HOMICIDE_2010 <- as.data.frame(total_HOMICIDE[total_HOMICIDE$Year== 2010, ])
+HOMICIDE_2010$Deaths<- na.omit(HOMICIDE_2010$Deaths)
+colnames(HOMICIDE_2010)[12]<- "Deaths"
+HOMICIDE_2010<- subset.data.frame(HOMICIDE_2010[c("Year", "State", "Deaths", "Population")])
+HOMICIDE_2010<- HOMICIDE_2010$State%>%
+  summarize(Deaths=sum(Deaths))
+
+df_new = df.groupby(df['id']).aggregate(aggregation_functions)
+HOMICIDE_2010$hover <- with(HOMICIDE_2010, paste(State, '<br>', "Beef", beef, "Dairy", dairy, "<br>",
+                           "Fruits", total.fruits, "Veggies", total.veggies,
+                           "<br>", "Wheat", wheat, "Corn", corn))
+# give state boundaries a white border
+l <- list(color = toRGB("white"), width = 2)
+# specify some map projection/options
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+
+fig <- plot_geo(df, locationmode = 'USA-states')
+fig <- fig %>% add_trace(
+    z = ~total.exports, text = ~hover, locations = ~code,
+    color = ~total.exports, colors = 'Purples'
+  )
+fig <- fig %>% colorbar(title = "Homicide by firearm")
+fig <- fig %>% layout(
+    title = '1999-2019 Homicide Rates in the USA <br>(Hover for breakdown)',
+    geo = g
+  )
+
+fig
+```
+
