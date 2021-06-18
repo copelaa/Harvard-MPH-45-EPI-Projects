@@ -32,20 +32,23 @@ Insert Data. Most can be used as a guide on what to use for different scenarios.
 
 Text files hosted on github and can be manually downloaded and opened from local machine, or pulled directly from Github. 
 ```{r}
-##Text file of homicides in all states from 1999-2008
+##Text file of homicides in all states by county and race from 1999-2008
 HOMICIDE_1999 = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%201999-2008.txt"
 
 HOMICIDE_1999 = read.delim(HOMICIDE_1999, header = TRUE)
 
-##Text file of homicides in all states from 2009-2019
+##Text file of homicides in all states by county and race from 2009-2019
 HOMICIDE_2009 = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%202009-2019.txt"
+HOMICIDE_2009 = read.delim(HOMICIDE_2009, header = TRUE)
+
+##Text file of homicides in all states 1999-2019
+HOMICIDE_States = "https://raw.githubusercontent.com/copelaa/myrepo/master/Time_Series/Data/Underlying%20Cause%20of%20Death%2C%201999-2019%20States.txt"
+HOMICIDE_States = read.delim(HOMICIDE_States, header = TRUE)
 
 ##Country file to plot over country image
-
 data <- fromJSON(file="https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json")
 data$features[[1]]
 
-HOMICIDE_2009 = read.delim(HOMICIDE_2009, header = TRUE)
 
 #Merge dataframes so years are 1999->2019
 total_HOMICIDE <- rbind(HOMICIDE_1999, HOMICIDE_2009)
@@ -55,8 +58,7 @@ Add Stand Your Ground Starting dates for States:
 ```{r}
 total_HOMICIDE$SYG_Start <- NA
 
-#Change Date format to show as dates in Dataframe
-total_HOMICIDE$SYG_Start<-as.Date(total_HOMICIDE$SYG_Start,origin = "1970-01-01", format = "%m/%d/%y")
+
 
 #Alabama
 total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Alabama"] <- as.Date("06/01/2006",format = "%m/%d/%y")
@@ -154,6 +156,10 @@ total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "West Virginia" ]<- as.Date("02
 #Wyoming                        
 total_HOMICIDE$SYG_Start[total_HOMICIDE$State == "Wyoming"] <- as.Date("07/01/2008",format = "%m/%d/%y")     
 
+
+#Change Date format to show as dates in Dataframe
+total_HOMICIDE$SYG_Start<-as.Date(total_HOMICIDE$SYG_Start,origin = "1970-01-01", format = "%m/%d/%y")
+
 #Check States with No SYG Laws
 NO_SYG<- data.frame(total_HOMICIDE$State[is.na(total_HOMICIDE$SYG_Start)])
 
@@ -169,6 +175,31 @@ SYG<- as.data.frame(SYG[ ,1])
 colnames(SYG)[1] <- "State"
 SYG<- SYG[!duplicated(SYG[ ,c("State")]),]       
 States<- total_HOMICIDE[!duplicated(total_HOMICIDE[ ,c("State")]),4]
+
+#Separate year from datetime:
+total_HOMICIDE$SYG <- format(total_HOMICIDE$SYG_Start, format="%Y")
+#Make an Intervention column
+total_HOMICIDE$I<- total_HOMICIDE$SYG>0
+total_HOMICIDE$I[total_HOMICIDE$I==TRUE]<-1
+
+
+#Add to State Dataframe
+SYG_Date = data.frame(State=c(total_HOMICIDE$State) , SYG= as.numeric(total_HOMICIDE$SYG))
+SYG_Date <- SYG_Date[!duplicated(SYG_Date[ ,c("State")]),1:2]
+row.names(SYG_Date) <- SYG_Date$State                     # Convert column to row names
+SYG_Date$State<-NULL
+HOMICIDE_States$SYG<-SYG_Date[HOMICIDE_States$State,]
+
+#Add End date
+HOMICIDE_States$END<- c(2019)
+
+#Make an Intervention column
+HOMICIDE_States$I<- HOMICIDE_States$SYG
+HOMICIDE_States$I[HOMICIDE_States$I==TRUE]<-1
+HOMICIDE_States$I[is.na(HOMICIDE_States$I)] = 0
+
+#Create Time Since intervention 
+HOMICIDE_States$P <- (HOMICIDE_States$END-HOMICIDE_States$SYG)
 ```
 
 Data Exploration: 
@@ -176,20 +207,15 @@ Data Exploration:
 Plot Homicide level over USA Image
 ```{r}
 test <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv")
-test$hover <- with(test, paste(state, '<br>', "Beef", beef, "Dairy", dairy, "<br>",
-                           "Fruits", total.fruits, "Veggies", total.veggies,
-                           "<br>", "Wheat", wheat, "Corn", corn))
-HOMICIDE_2010 <- as.data.frame(total_HOMICIDE[total_HOMICIDE$Year== 2010, ])
-HOMICIDE_2010$Deaths<- na.omit(HOMICIDE_2010$Deaths)
-colnames(HOMICIDE_2010)[12]<- "Deaths"
-HOMICIDE_2010<- subset.data.frame(HOMICIDE_2010[c("Year", "State", "Deaths", "Population")])
-HOMICIDE_2010<- HOMICIDE_2010$State%>%
-  summarize(Deaths=sum(Deaths))
 
-df_new = df.groupby(df['id']).aggregate(aggregation_functions)
-HOMICIDE_2010$hover <- with(HOMICIDE_2010, paste(State, '<br>', "Beef", beef, "Dairy", dairy, "<br>",
-                           "Fruits", total.fruits, "Veggies", total.veggies,
-                           "<br>", "Wheat", wheat, "Corn", corn))
+HOMICIDE_States_2009<- HOMICIDE_States[ which(HOMICIDE_States$Year=="2009"), ]
+# ADD State codes to data frame 2009
+x=data.frame(row.names=c(test$state) , val=c(test$code))
+HOMICIDE_States_2009$State_AB<- x[HOMICIDE_States_2009$State,]
+
+#Map on US Map
+HOMICIDE_States_2009$hover <- with(HOMICIDE_States_2009, paste(State, '<br>', "Deaths", Deaths, "Population", Population, "<br>",
+                           "Age Adjusted Rate", Age.Adjusted.Rate))
 # give state boundaries a white border
 l <- list(color = toRGB("white"), width = 2)
 # specify some map projection/options
@@ -200,17 +226,48 @@ g <- list(
   lakecolor = toRGB('white')
 )
 
-fig <- plot_geo(df, locationmode = 'USA-states')
+fig <- plot_geo(HOMICIDE_States_2009, locationmode = 'USA-states')
 fig <- fig %>% add_trace(
-    z = ~total.exports, text = ~hover, locations = ~code,
-    color = ~total.exports, colors = 'Purples'
+    z = ~Deaths, text = ~hover, locations = ~State_AB,
+    color = ~Deaths, colors = 'Purples'
   )
 fig <- fig %>% colorbar(title = "Homicide by firearm")
 fig <- fig %>% layout(
-    title = '1999-2019 Homicide Rates in the USA <br>(Hover for breakdown)',
+    title = '2009 Homicide Rates in the USA <br>(Hover for breakdown)',
     geo = g
   )
 
 fig
+```
+
+```{r Plot intial time series}
+
+plot( total_HOMICIDE$SYG, total_HOMICIDE$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(0, 300), xlim=c(0,400),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms" )
+
+# Line marking the interruption
+abline( v=2006, col="firebrick", lty=2 )
+text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+ts <- lm( Deaths ~ SYG + D + P, data=dataTS )
+lines( dataTS$T, ts$fitted.values, col="steelblue", lwd=2 )
+
+```
+
+```{r Check for correlation among points}
+
+attach(total_HOMICIDE)
+plot(Deaths, Year, main="Scatterplot Example",
+   xlab="Deaths ", ylab="Year", pch=19)
+regTS_OK <- lm(Deaths ~ Year, data = total_HOMICIDE)
+# Calculate a simple regression where birth rate depends only on time 
+print(regTS_OK)
+summary(regTS_OK)
+plot(resid( regTS_OK ))
+
 ```
 
