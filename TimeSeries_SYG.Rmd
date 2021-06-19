@@ -164,9 +164,7 @@ total_HOMICIDE$SYG_Start<- as_date(total_HOMICIDE$SYG_Start, origin = lubridate:
 
 #Check States with No SYG Laws
 NO_SYG<- data.frame(total_HOMICIDE$State[is.na(total_HOMICIDE$SYG_Start)])
-
 colnames(NO_SYG)[1] <- "State"
-
 NO_SYG<- NO_SYG[!duplicated(NO_SYG[ ,c("State")]),]
   
 
@@ -180,28 +178,47 @@ States<- total_HOMICIDE[!duplicated(total_HOMICIDE[ ,c("State")]),4]
 
 #Separate year from datetime:
 total_HOMICIDE$SYG <- format(total_HOMICIDE$SYG_Start, format="%Y")
-#Make an Intervention column
-total_HOMICIDE$I<- total_HOMICIDE$SYG>0
-total_HOMICIDE$I[total_HOMICIDE$I==TRUE]<-1
 
+```
 
-#Add to State Dataframe
-SYG_Date = data.frame(State=c(total_HOMICIDE$State) , SYG= as.numeric(total_HOMICIDE$SYG))
-SYG_Date <- SYG_Date[!duplicated(SYG_Date[ ,c("State")]),1:2]
+State Dataframe for actual use for TS analysis 
+```{r}
+HOMICIDE_States$SYG_Start <- NA
+
+#Add SYG Year and SYG Start date to State Dataframe from Total Homicide dataframe
+SYG_Date = data.frame(State=c(total_HOMICIDE$State) , SYG= as.numeric(total_HOMICIDE$SYG), SYG_Start=as.Date(total_HOMICIDE$SYG_Start))
+SYG_Date <- SYG_Date[!duplicated(SYG_Date[ ,c("State")]),1:3]
 row.names(SYG_Date) <- SYG_Date$State                     # Convert column to row names
 SYG_Date$State<-NULL
-HOMICIDE_States$SYG<-SYG_Date[HOMICIDE_States$State,]
+HOMICIDE_States$SYG<-SYG_Date[HOMICIDE_States$State,"SYG"]
+HOMICIDE_States$SYG_Start<-SYG_Date[HOMICIDE_States$State, "SYG_Start"]
+
+#Check States with No SYG Laws
+NO_SYG_states<- data.frame(HOMICIDE_States$State[is.na(HOMICIDE_States$SYG_Start)])
+colnames(NO_SYG_states)[1] <- "State"
+NO_SYG_states<- NO_SYG_states[!duplicated(NO_SYG_states[ ,c("State")]),]
+  
+#Check States with SYG Laws
+SYG_states<- data.frame(HOMICIDE_States[ ,c(4,23)])
+SYG_states<- na.omit(SYG_states)
+SYG_states<- as.data.frame(SYG_states[ ,1])
+colnames(SYG_states)[1] <- "State"
+SYG_states<- SYG_states[!duplicated(SYG_states[ ,c("State")]),]       
+States<- HOMICIDE_States[!duplicated(HOMICIDE_States[ ,c("State")]),4]
+
+#Make an Intervention column
+HOMICIDE_States$I<- NA
+Intervention <- function(x) {if (is.na(x)) {0} else {1}}
+HOMICIDE_States$I<-sapply(HOMICIDE_States$SYG, Intervention)
 
 #Add End date
 HOMICIDE_States$END<- c(2019)
 
-#Make an Intervention column
-HOMICIDE_States$I<-if(HOMICIDE_States$I=1, if(HOMICIDE_States$SYG>1)
-HOMICIDE_States$I[HOMICIDE_States$I==TRUE]<-1
-HOMICIDE_States$I[is.na(HOMICIDE_States$I)] = 0
+
 
 #Create Time Since intervention 
 HOMICIDE_States$P <- (HOMICIDE_States$END-HOMICIDE_States$SYG)
+
 ```
 
 Data Exploration: 
@@ -244,9 +261,9 @@ fig
 
 ```{r Plot intial time series}
 
-plot( total_HOMICIDE$SYG, total_HOMICIDE$Deaths,
+plot(HOMICIDE_States$SYG, HOMICIDE_States$Deaths,
       bty="n", pch=19, col="gray",
-      ylim = c(0, 300), xlim=c(0,400),
+      ylim = c(min(HOMICIDE_States$Deaths, na.rm = TRUE), max(HOMICIDE_States$Deaths, na.rm = TRUE)), xlim=c(2000,2020),
       xlab = "Time (years)", 
       ylab = "Homicide Deaths by Firearms" )
 
