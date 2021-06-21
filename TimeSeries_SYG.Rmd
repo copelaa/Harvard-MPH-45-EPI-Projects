@@ -16,7 +16,13 @@ Install packages and open libraries as needed
 # install.packages("ggplot2")
 # install.packages("readxl")
 # install.packages("reshape2")
-install.packages("lubridate")
+#install.packages("lubridate")
+# install.packages("pander")
+# install.packages("stargazer")
+# install.packages("scales")
+library(scales)
+library(stargazer)
+library(pander)
 library(lubridate)
 library(readxl)
 library(data.table)
@@ -28,6 +34,8 @@ library (reshape2)
 library(dplyr)
 library(plotly)
 library(rjson)
+library(tidyr)
+library(reshape2)
 ```
 
 Insert Data. Most can be used as a guide on what to use for different scenarios. Importing text files (https://github.com/copelaa/myrepo/tree/master/Time_Series/Data.
@@ -208,17 +216,17 @@ States<- HOMICIDE_States[!duplicated(HOMICIDE_States[ ,c("State")]),4]
 
 #Make an Intervention column
 HOMICIDE_States$I<- NA
-Intervention <- function(x) {if (is.na(x)) {0} else {1}}
-HOMICIDE_States$I<-sapply(HOMICIDE_States$SYG, Intervention)
+
+HOMICIDE_States$I<- ifelse(HOMICIDE_States$Year >= HOMICIDE_States$SYG & !is.na(HOMICIDE_States$SYG),1,0)
 
 #Add End date
 HOMICIDE_States$END<- c(2019)
 
-
-
 #Create Time Since intervention 
 HOMICIDE_States$P <- (HOMICIDE_States$END-HOMICIDE_States$SYG)
 
+#Drop rows 974 on. (all disclaimer information)
+HOMICIDE_States<-HOMICIDE_States[-c(974:1046),] 
 ```
 
 Data Exploration: 
@@ -257,26 +265,234 @@ fig <- fig %>% layout(
   )
 
 fig
+
 ```
 
-```{r Plot intial time series}
 
-plot(HOMICIDE_States$SYG, HOMICIDE_States$Deaths,
+
+```{r Plot intial time series}
+# The arguments to spread():
+# - data: States
+# - key: State
+# - value: Deaths
+#Using reshape2 package
+HOMICIDE_States_wide<- dcast(HOMICIDE_States , State ~ Year, value.var = "Deaths")
+
+HOMICIDE_STATES_SYG <- HOMICIDE_States %>% filter(!is.na(SYG))
+HOMICIDE_STATES_NOSYG<- HOMICIDE_States %>% filter(is.na(SYG))
+
+#Plot SYG States and deaths
+plot(HOMICIDE_STATES_SYG$Year, HOMICIDE_STATES_SYG$Deaths,
       bty="n", pch=19, col="gray",
-      ylim = c(min(HOMICIDE_States$Deaths, na.rm = TRUE), max(HOMICIDE_States$Deaths, na.rm = TRUE)), xlim=c(2000,2020),
+      ylim = c(min(HOMICIDE_STATES_SYG$Deaths, na.rm = TRUE), max(HOMICIDE_STATES_SYG$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
       xlab = "Time (years)", 
-      ylab = "Homicide Deaths by Firearms" )
+      ylab = "Homicide Deaths by Firearms")
 
 # Line marking the interruption
 abline( v=2006, col="firebrick", lty=2 )
 text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
 
 # Add the regression line
-ts <- lm( Deaths ~ SYG + D + P, data=dataTS )
-lines( dataTS$T, ts$fitted.values, col="steelblue", lwd=2 )
+ts <- lm(Deaths ~ Year, data=HOMICIDE_STATES_SYG)
+lines(HOMICIDE_STATES_SYG$Year, ts$fitted.values, col="steelblue", lwd=2)
+summary(ts)
+
+
+#Plot no SYG Law States 
+plot(HOMICIDE_STATES_NOSYG$Year, HOMICIDE_STATES_NOSYG$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(min(HOMICIDE_STATES_NOSYG$Deaths, na.rm = TRUE), max(HOMICIDE_STATES_NOSYG$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms")
+
+# Line marking the interruption
+abline( v=2006, col="firebrick", lty=2 )
+text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+ts_NO <- lm(Deaths ~ Year, data=HOMICIDE_STATES_NOSYG)
+lines(HOMICIDE_STATES_NOSYG$Year, ts_NO$fitted.values, col="steelblue", lwd=2)
+summary(ts_NO)
 
 ```
 
+
+Column	Variable name	Description
+Deaths: Deaths by firearms, not including Suicide
+T: Year-Time (from 1999 to 2019)
+I: Stand Your Ground Intervention.	Observation post (=1) and pre (=0) intervention
+P: Time Since Intervention Time passed since the intervention in years
+Our model is based on the equation (1.1):
+
+Y=b0+b1∗Time+b2∗Intervention+b3∗TimeSinceIntervention+e
+
+```{r}
+regTS = lm (Deaths ~ Year + I + P, data=HOMICIDE_STATES_SYG)# Our time series model
+
+suppressWarnings(stargazer(regTS,type="text"))
+
+```
+
+
+```{r Lets look at a specific states as the SYG laws went into effect at multiple times}
+
+#Ohio 
+HOMICIDE_Ohio_SYG<- HOMICIDE_STATES_SYG[which(HOMICIDE_STATES_SYG$State=="Ohio"), ]
+
+#Plot SYG States and deaths
+plot(HOMICIDE_Ohio_SYG$Year, HOMICIDE_Ohio_SYG$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(min(HOMICIDE_Ohio_SYG$Deaths, na.rm = TRUE), max(HOMICIDE_Ohio_SYG$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms")
+
+# Line marking the interruption
+abline( v=2008, col="firebrick", lty=2 )
+text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+ts_Ohio <- lm(Deaths ~ Year + I + P, data=HOMICIDE_Ohio_SYG)
+lines(HOMICIDE_Ohio_SYG$Year, ts_Ohio$fitted.values, col="steelblue", lwd=2)
+summary(ts_Ohio)
+```
+
+```{r Texas}
+#Texas 
+HOMICIDE_Texas_SYG<- HOMICIDE_STATES_SYG[which(HOMICIDE_STATES_SYG$State=="Texas"), ]
+
+#Plot SYG States and deaths
+plot(HOMICIDE_Texas_SYG$Year, HOMICIDE_Texas_SYG$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(min(HOMICIDE_Texas_SYG$Deaths, na.rm = TRUE), max(HOMICIDE_Texas_SYG$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms")
+
+# Line marking the interruption
+abline( v=2007, col="firebrick", lty=2 )
+text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+ts_Texas <- lm(Deaths ~ Year + I + P, data=HOMICIDE_Texas_SYG)
+lines(HOMICIDE_Texas_SYG$Year, ts_Texas$fitted.values, col="steelblue", lwd=2)
+summary(ts_Texas)
+
+regTS_Texas = lm (Deaths ~ Year + I + P, data=HOMICIDE_Texas_SYG)# Our time series model
+
+suppressWarnings(stargazer(regTS_Texas,type="text"))
+
+```
+Now, we can calculate the outcome 8 years after the intervention. Time will be equal to 2015 while Time Since Treatment will be equal to 8. Treatment is always equal to 1 since it is a dummy variable indicating pre or post intervention.
+
+Y=b0+b1∗2015+b2∗1+b3∗8+e(2.3)
+
+We can add the new point at t = 2015 to the graph:
+```{r}
+Texas2<- as.data.frame( cbind( Year = 2015, I = 1, P = 8 )) # New data
+
+y2 <- predict( regTS_Texas, Texas2 ) # We predict the new outcome
+
+# We plot our initial observations, the column Y in our dataset
+plot( HOMICIDE_Texas_SYG$Year, HOMICIDE_Texas_SYG$Deaths,
+      bty="n",
+      col = gray(0.5,0.5), pch=19,
+      xlim = c(1999,2020), 
+      ylim = c(700,1300),
+      xlab = "Time(Years)", 
+      ylab = "Deaths")
+
+# We add a point showing the level of Death at time = 2015
+points(2015, y2, col = "dodgerblue4", pch = 19, bg = "red", cex = 2)
+
+# Label for our predicted outcome
+text(2015, y2, labels = "Year = 2015", pos = 4, cex = 1)
+
+# Line marking the interruption
+abline( v=2008, col="red", lty=2 )
+```
+
+Calculate the counterfactual for any point in time. The counterfactual at Time = 2015 is the level of Deaths at that point in time if the intervention had not occurred.
+
+Note the changes in our equation (2.3): Treatment and Time Since Treatment are both equal to 0.
+
+Y=b0+b1∗230+b2∗0+b3∗0+e
+
+As before, we plot the results on a graph. Y is our predict value and C is the counterfactual.
+
+```{r Texas Counterfactual}
+Texas3 <- as.data.frame(cbind( Year= 2015, I = 0, P = 0)) # Data if the intervention does not occur
+
+y3 <- predict(regTS_Texas, Texas3) #Counterfactual
+
+# We plot our initial observations, the column Y in our dataset
+plot( HOMICIDE_Texas_SYG$Year, HOMICIDE_Texas_SYG$Deaths,
+      bty="n",
+      col = gray(0.5,0.5), pch=19,
+      xlim = c(1999, 2020), 
+      ylim = c(700, 1300),
+      xlab = "Time (Years)", 
+      ylab = "Death")
+
+# We add a  point showing the level of Death at time = 2015
+points(2015, y2, col = "dodgerblue4", pch = 15, bg = "red", cex = 2)
+
+# We add a point indicating the counterfactual
+points(2015, y3, col = "darkorange2", pch = 15, cex = 2)
+
+# Label for our predicted outcome
+text(2015, y2, labels = "Deaths = 1100 at t = 2015", pos = 2, cex = 1)
+
+#Label for the counterfactual 
+text(2015, y3, labels = "C.Deaths = 1268 at t = 2015", pos = 2, cex = 1)
+
+# Line marking the interruption
+abline( v=2008, col="red", lty=2 )
+```
+plotting all predicted outcomes and their counterfactuals. We can see that there is an increase in the number of deaths after the intervention. The dashed line represents the counterfactual.
+```{r}
+pred1_Texas <- predict(regTS_Texas, HOMICIDE_Texas_SYG) 
+# To estimate all predicted values of Death, we just use our dataset
+
+datanew_Texas<- as.data.frame(cbind(Year = rep(1999 : 2020), I = rep(0), P = rep(0))) 
+# Create a new dataset where Treatment and Time Since Treatment are equal to 0 as the intervention did not occur.
+
+pred2_Texas <- predict(regTS_Texas, datanew_Texas)
+
+# Predict the counterfactuals
+plot( HOMICIDE_Texas_SYG$Year, HOMICIDE_Texas_SYG$Deaths,
+      bty="n",
+      col = gray(0.5,0.5), pch=19,
+      xlim = c(1999, 2020), 
+      ylim = c(700, 1500),
+      xlab = "Time (Years)", 
+      ylab = "Deaths")
+
+lines( rep(1999:2008), pred1_Texas[1:10], col="dodgerblue4", lwd = 3 )
+lines( rep(2008:2020), pred1_Texas[10:22], col="dodgerblue4", lwd = 3 )
+lines( rep(2008:2020), pred2_Texas[10:22], col="darkorange2", lwd = 3, lty = 5 ) 
+
+text(2000, 800, labels = "Predicted values", pos = 4, cex = 1, col = "dodgerblue3")
+text(2015, 1400, labels = "Counterfactual", pos = 4, cex = 1, col = "darkorange2")
+
+# Line marking the interruption
+abline( v=2008, col="darkorange2", lty=2 )
+
+```
+Note that the coefficients obtained from equation (2.1) do not tell us if the difference between each point (the predicted outcomes) and its counterfactual is statistically significant. It only tells you if there is an immediate change after the intervention and the slope has changed after the intervention.
+
+There is no statistical test to look at whether there is a statistically significant difference between a predicted outcome and its counterfactual. This has important implications. It could be that effect of the intervention varies over time. In this case, there is a drop in homicide deaths a few years after the intervention. For instance, it could be that the law was doing as it intended to do right after it was made law. However we also have to consider outside factors that may contribute to the drop in homicides from 2008-2012.
+
+```{r}
+reg2 = lm(Y ~ T + D + P, data = dataTS2)
+
+stargazer( reg2_T, 
+           type = "html", 
+           dep.var.labels = ("Wellbeing"),
+           column.labels = ("Model results"),
+           covariate.labels = c("Time", "Treatment", "Time Since Treatment"),
+           omit.stat = "all", 
+           digits = 2 )
+```
+ 
 ```{r Check for correlation among points}
 
 attach(total_HOMICIDE)
