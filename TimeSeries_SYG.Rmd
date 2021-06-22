@@ -293,7 +293,7 @@ abline( v=2006, col="firebrick", lty=2 )
 text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
 
 # Add the regression line
-ts <- lm(Deaths ~ Year, data=HOMICIDE_STATES_SYG)
+ts <- lm(Deaths ~ Year + I + P, data=HOMICIDE_STATES_SYG)
 lines(HOMICIDE_STATES_SYG$Year, ts$fitted.values, col="steelblue", lwd=2)
 summary(ts)
 
@@ -481,17 +481,47 @@ Note that the coefficients obtained from equation (2.1) do not tell us if the di
 
 There is no statistical test to look at whether there is a statistically significant difference between a predicted outcome and its counterfactual. This has important implications. It could be that effect of the intervention varies over time. In this case, there is a drop in homicide deaths a few years after the intervention. For instance, it could be that the law was doing as it intended to do right after it was made law. However we also have to consider outside factors that may contribute to the drop in homicides from 2008-2012.
 
-```{r}
-reg2 = lm(Y ~ T + D + P, data = dataTS2)
+NO SYG Group Compared to SYG Groups
+```{r Get Dataframe ready for no SYG group}
+NO_SYG_Var<- c("Year","State","Deaths","I","P")
+NO_SYG<-HOMICIDE_STATES_NOSYG[NO_SYG_Var]
+NO_SYG["P"]=0
 
-stargazer( reg2_T, 
-           type = "html", 
-           dep.var.labels = ("Wellbeing"),
-           column.labels = ("Model results"),
-           covariate.labels = c("Time", "Treatment", "Time Since Treatment"),
-           omit.stat = "all", 
-           digits = 2 )
+plot(NO_SYG$Year, NO_SYG$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(min(NO_SYG$Deaths, na.rm = TRUE), max(NO_SYG$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms")
+
+#find regression of No SYG states
+ts_NOSYG <- lm(Deaths ~ Year, data=NO_SYG)
+lines(NO_SYG$Year, ts_NOSYG$fitted.values, col="steelblue", lwd=2)
+summary(ts_NOSYG)
+
+regTS_NOSYG = lm(Deaths ~ Year, data=NO_SYG)# Our time series model
+
+suppressWarnings(stargazer(regTS_NOSYG,type="text"))
 ```
+
+```{r}
+#Plot all States 
+plot(HOMICIDE_States$Year, HOMICIDE_States$Deaths,
+      bty="n", pch=19, col="gray",
+      ylim = c(min(HOMICIDE_States$Deaths, na.rm = TRUE), max(HOMICIDE_States$Deaths, na.rm = TRUE)), xlim=c(1999,2020),
+      xlab = "Time (years)", 
+      ylab = "Homicide Deaths by Firearms")
+
+# Line marking the interruption
+abline( v=2006, col="firebrick", lty=2 )
+text( 200, 300, "Start of Stand your Ground Laws", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+lines(HOMICIDE_STATES_NOSYG$Year, ts_NOSYG$fitted.values, col="steelblue", lwd=2)
+lines(HOMICIDE_STATES_SYG$Year, ts$fitted.values, col="firebrick", lwd=2)
+
+summary(ts_NO)
+```
+
  
 ```{r Check for correlation among points}
 
